@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  inspectSources,
   normalizeSource,
   normalizeSources,
   sourceKey,
@@ -199,3 +200,64 @@ describe('sourcesKey', () => {
     );
   });
 });
+
+describe('invalid and empty sources', () => {
+  test('normalizeSource does not throw for null, undefined, strings, empty objects or invalid types', () => {
+    expect(normalizeSource(null, resolveAsset)).toBeNull();
+    expect(normalizeSource(undefined, resolveAsset)).toBeNull();
+    expect(normalizeSource('https://example.com/a.pdf', resolveAsset)).toBeNull();
+    expect(normalizeSource({}, resolveAsset)).toBeNull();
+    expect(normalizeSource({ uri: 42 as never }, resolveAsset)).toBeNull();
+  });
+
+  test('normalizeSources does not throw and returns [] for null, undefined or malformed sources', () => {
+    expect(normalizeSources(null, undefined, resolveAsset)).toEqual([]);
+    expect(normalizeSources(undefined, undefined, resolveAsset)).toEqual([]);
+    expect(normalizeSources('https://example.com/a.pdf', undefined, resolveAsset)).toEqual([]);
+    expect(normalizeSources([null as never], undefined, resolveAsset)).toEqual([]);
+  });
+
+  test('inspectSources classifies null and undefined as empty', () => {
+    expect(inspectSources(null, undefined, resolveAsset)).toEqual({ status: 'empty' });
+    expect(inspectSources(undefined, undefined, resolveAsset)).toEqual({ status: 'empty' });
+  });
+
+  test('inspectSources reports malformed single sources as invalid with descriptive message', () => {
+    expect(inspectSources('https://example.com/a.pdf', undefined, resolveAsset)).toEqual({
+      status: 'invalid',
+      message:
+        'source must be a require() result or an object with uri, filePath or base64; got a string',
+      sourceIndex: undefined,
+    });
+    expect(inspectSources({}, undefined, resolveAsset)).toEqual({
+      status: 'invalid',
+      message:
+        'source must be a require() result or an object with uri, filePath or base64; got {}',
+      sourceIndex: undefined,
+    });
+    expect(inspectSources({ uri: 42 as never }, undefined, resolveAsset)).toEqual({
+      status: 'invalid',
+      message:
+        'source must be a require() result or an object with uri, filePath or base64; got { uri: 42 }',
+      sourceIndex: undefined,
+    });
+  });
+
+  test('inspectSources reports malformed list items with sourceIndex', () => {
+    expect(inspectSources([null as never], undefined, resolveAsset)).toEqual({
+      status: 'invalid',
+      message:
+        'source must be a require() result or an object with uri, filePath or base64; got null',
+      sourceIndex: 0,
+    });
+    expect(
+      inspectSources([{ uri: 'https://x.test/a.pdf' }, 'bad' as never], undefined, resolveAsset),
+    ).toEqual({
+      status: 'invalid',
+      message:
+        'source must be a require() result or an object with uri, filePath or base64; got a string',
+      sourceIndex: 1,
+    });
+  });
+});
+

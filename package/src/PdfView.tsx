@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useId,
   useImperativeHandle,
   useLayoutEffect,
@@ -30,7 +31,12 @@ import { OverlayRegistryContext, type OverlayRegistry } from './PdfPageOverlay';
 import { buildOutlineTree } from './outline';
 import { defaultPrintJobName } from './printJobName';
 import { toNativeSource } from './nativeSource';
-import { normalizeSources, sourcesKey, type PdfSource } from './source';
+import {
+  inspectSources,
+  sourcesKey,
+  type NormalizedSource,
+  type PdfSource,
+} from './source';
 import type {
   PdfViewMethods,
   PdfViewProps as NativeProps,
@@ -208,7 +214,7 @@ export interface PdfViewProps extends ViewProps {
    * forms cannot be filled in, and `print`, `exportDocument`,
    * `getFormFields` and `setFormFieldValues` reject.
    */
-  source: PdfSource | readonly PdfSource[];
+  source?: PdfSource | readonly PdfSource[] | null;
   /**
    * Opens password-protected documents: every source without a `password`
    * of its own, including bundled assets.
@@ -494,22 +500,18 @@ function useInitialPosition(
   );
 }
 
+const EMPTY_NORMALIZED_SOURCES: readonly NormalizedSource[] = [];
+
 /**
  * Keeps the native sources prop referentially stable while its value is
  * unchanged. Nitro diffs props by JS identity, so without this an inline
  * `source={{ uri }}` would re-send the source to native on every render.
  */
 function useStableSources(
-  source: PdfSource | readonly PdfSource[],
-  password: string | undefined,
+  sources: readonly NormalizedSource[],
 ): NativePdfSource[] {
-  const normalized = normalizeSources(
-    source,
-    password,
-    Image.resolveAssetSource,
-  );
-  const key = sourcesKey(normalized);
-  const base64 = normalized.map((item) => item.base64);
+  const key = sourcesKey(sources);
+  const base64 = sources.map((item) => item.base64);
   const cached = useRef<{
     key: string;
     base64: (string | undefined)[];
@@ -522,7 +524,7 @@ function useStableSources(
     cached.current?.key !== key ||
     cached.current.base64.some((text, index) => !Object.is(text, base64[index]))
   ) {
-    cached.current = { key, base64, value: normalized.map(toNativeSource) };
+    cached.current = { key, base64, value: sources.map(toNativeSource) };
   }
   return cached.current.value;
   /* eslint-enable react-hooks/refs */
@@ -580,7 +582,12 @@ export function PdfView({
   children,
   ...viewProps
 }: PdfViewProps) {
-  const nativeSources = useStableSources(source, password);
+  const inspection = inspectSources(source, password, Image.resolveAssetSource);
+  const validSources =
+    inspection.status === 'valid'
+      ? inspection.sources
+      : EMPTY_NORMALIZED_SOURCES;
+  const nativeSources = useStableSources(validSources);
   const nativeContentInset = useContentInset(contentInset);
   const { overlays, overlayRegistry } = useOverlays();
   const overlayLayerId = `pdf-overlays${useId()}`;
@@ -750,6 +757,34 @@ export function PdfView({
     if (renderedHandlers[name] !== undefined) subscribed.current.add(name);
     return subscribed.current.has(name) ? nativeCallbacks[name] : undefined;
   };
+
+  const isInvalidSource = inspection.status === 'invalid';
+  const invalidMessage = isInvalidSource ? inspection.message : undefined;
+  const invalidSourceIndex = isInvalidSource ? inspection.sourceIndex : undefined;
+
+  useEffect(() => {
+    if (isInvalidSource && invalidMessage !== undefined) {
+      handlers.current.onError?.({
+        code: 'invalid-source',
+        message: invalidMessage,
+        sourceIndex: invalidSourceIndex,
+      });
+    }
+  }, [isInvalidSource, invalidMessage, invalidSourceIndex]);
+
+  useEffect(() => {
+    if (inspection.status !== 'valid') {
+      nativeRef.current = null;
+    }
+  }, [inspection.status]);
+
+  if (inspection.status !== 'valid') {
+    return (
+      <View {...viewProps} style={[styles.box, style]} collapsable={false}>
+        {children}
+      </View>
+    );
+  }
 
   // The native view fills a plain View that takes the app's style: Android
   // ignores `borderRadius` on custom native views, and clipping a scrolling

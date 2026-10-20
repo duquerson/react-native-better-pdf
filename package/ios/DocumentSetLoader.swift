@@ -57,8 +57,7 @@ final class DocumentSetLoader {
       DispatchQueue.main.async { if !self.isFinished { self.releaseLoaded() } }
     }
     guard !sources.isEmpty else {
-      var failure = PdfLoadFailure(code: .invalidSource, message: "No PDF source was given")
-      failure.sourceIndex = 0
+      let failure = PdfLoadFailure(code: .invalidSource, message: "No PDF source was given")
       DispatchQueue.main.async { [self] in finish(.failure(failure)) }
       return
     }

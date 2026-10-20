@@ -948,4 +948,115 @@ describe('PdfView', () => {
       },
     ]);
   });
+
+  test('null and undefined render an empty box without native view and fire no events', () => {
+    const events: string[] = [];
+    render(
+      <PdfView
+        source={null}
+        onLoad={() => events.push('load')}
+        onError={() => events.push('error')}
+      />,
+    );
+    expect(hostRenders.length).toBe(0);
+    expect(boxRenders.length).toBeGreaterThan(0);
+    expect(events).toEqual([]);
+
+    hostRenders.length = 0;
+    boxRenders.length = 0;
+    render(
+      <PdfView
+        source={undefined}
+        onLoad={() => events.push('load')}
+        onError={() => events.push('error')}
+      />,
+    );
+    expect(hostRenders.length).toBe(0);
+    expect(boxRenders.length).toBeGreaterThan(0);
+    expect(events).toEqual([]);
+  });
+
+  test('null -> source -> null mounts, updates native sources, and unmounts native view', () => {
+    const renderer = render(<PdfView source={null} />);
+    expect(hostRenders.length).toBe(0);
+
+    act(() => renderer.update(<PdfView source={{ uri: 'file:///a.pdf' }} />));
+    expect(hostRenders.length).toBe(1);
+    expect(lastHost().sources).toEqual([{ uri: 'file:///a.pdf', password: '' }]);
+
+    act(() => renderer.update(<PdfView source={null} />));
+    const countAfterNull = hostRenders.length;
+    act(() => renderer.update(<PdfView source={null} />));
+    expect(hostRenders.length).toBe(countAfterNull);
+  });
+
+  test('malformed values call onError once with invalid-source and do not throw during render', () => {
+    const stringErrors: unknown[] = [];
+    render(
+      <PdfView
+        source={'https://example.com/a.pdf' as never}
+        onError={(err) => stringErrors.push(err)}
+      />,
+    );
+    expect(hostRenders.length).toBe(0);
+    expect(stringErrors).toEqual([
+      {
+        code: 'invalid-source',
+        message:
+          'source must be a require() result or an object with uri, filePath or base64; got a string',
+        sourceIndex: undefined,
+      },
+    ]);
+
+    const objErrors: unknown[] = [];
+    render(
+      <PdfView
+        source={{} as never}
+        onError={(err) => objErrors.push(err)}
+      />,
+    );
+    expect(hostRenders.length).toBe(0);
+    expect(objErrors).toEqual([
+      {
+        code: 'invalid-source',
+        message:
+          'source must be a require() result or an object with uri, filePath or base64; got {}',
+        sourceIndex: undefined,
+      },
+    ]);
+
+    const uriNumberErrors: unknown[] = [];
+    render(
+      <PdfView
+        source={{ uri: 42 } as never}
+        onError={(err) => uriNumberErrors.push(err)}
+      />,
+    );
+    expect(hostRenders.length).toBe(0);
+    expect(uriNumberErrors).toEqual([
+      {
+        code: 'invalid-source',
+        message:
+          'source must be a require() result or an object with uri, filePath or base64; got { uri: 42 }',
+        sourceIndex: undefined,
+      },
+    ]);
+
+    const listErrors: unknown[] = [];
+    render(
+      <PdfView
+        source={[null as never]}
+        onError={(err) => listErrors.push(err)}
+      />,
+    );
+    expect(hostRenders.length).toBe(0);
+    expect(listErrors).toEqual([
+      {
+        code: 'invalid-source',
+        message:
+          'source must be a require() result or an object with uri, filePath or base64; got null',
+        sourceIndex: 0,
+      },
+    ]);
+  });
 });

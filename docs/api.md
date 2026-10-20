@@ -14,7 +14,7 @@ Every component, object and type is exported from the package root. The
 
 | Prop | Type | Default | |
 | --- | --- | --- | --- |
-| `source` | `PdfSource \| PdfSource[]` | — | required; a list is shown as one document, see [Several documents as one](guides/sources-and-loading.md#several-documents-as-one) |
+| `source` | `PdfSource \| PdfSource[] \| null` | — | optional; renders an empty viewer when `null` or `undefined`. A list is shown as one document, see [Several documents as one](guides/sources-and-loading.md#several-documents-as-one) |
 | `password` | `string` | — | for every source without a `password` of its own; changing it re-opens the document (no re-download) |
 | `initialPage` | `number` | `0` | zero-based, rounded to the nearest page, applied once per loaded document |
 | `initialScale` | `number` | `1` | zoom applied once per loaded document, relative to the fitted page |

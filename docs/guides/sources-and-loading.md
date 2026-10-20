@@ -27,6 +27,33 @@ before its `password` option.
 break or another control character (tab is fine): such a source fails with
 `invalid-source` on both platforms, before anything is sent.
 
+## Empty state
+
+`PdfView` accepts `source={null}` and `source={undefined}` while the document
+is not known yet. In this state, it renders a plain `View` container with the
+same style without mounting the native viewer; no load runs, no events fire,
+and `ref` methods reject as they do before mount.
+
+Setting a valid source afterwards mounts the native viewer and loads the
+document. Setting the source back to `null` unmounts the native viewer, closing
+the document.
+
+## Invalid sources
+
+A source must be a `require()` asset number or an object with `uri`, `filePath`
+or `base64`. Anything else — a raw URL string (e.g. `'https://...'`), an empty
+object `{}`, property types that do not match (such as `{ uri: 42 }`), or list
+items that are not objects (such as `[null]`) — is malformed:
+
+- In `PdfView`: it never throws during render. Nothing is sent to native, and
+  `onError` is called once with `code: 'invalid-source'` and an explanatory
+  message (including `sourceIndex` when the failure belongs to an item in a list).
+- In `PdfDocument.open` and `PdfCache.download`: the returned promise rejects
+  with `PdfOpenError` or `PdfDownloadError` (`code: 'invalid-source'`).
+- `PdfCache.getEntry` and `PdfCache.remove`: reject their promise instead of
+  throwing synchronously.
+- An empty list `[]` reports an `invalid-source` error with no `sourceIndex`.
+
 ## Base64 documents
 
 A document you have as a base64 string — made with pdfmake or pdf-lib, or
