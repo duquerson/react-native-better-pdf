@@ -106,6 +106,7 @@ export type NormalizedSource = Omit<NativePdfSource, 'base64'> & {
   base64?: string;
 };
 
+/** Describes an arbitrary runtime value without invoking unsafe serialization. */
 function describeValue(value: unknown): string {
   if (value === null) return 'null';
   switch (typeof value) {
@@ -128,7 +129,13 @@ function describeValue(value: unknown): string {
   }
 }
 
-function describeSourceType(source: unknown): string {
+/**
+ * Describes the runtime shape of a source for a validation error.
+ *
+ * `normalizeUriSource` passes `uriOnly` because that helper accepts only URI
+ * sources, while the other callers accept `uri`, `filePath`, or `base64`.
+ */
+function describeSourceType(source: unknown, uriOnly = false): string {
   if (source === null) return 'null';
   if (source === undefined) return 'undefined';
   if (Array.isArray(source)) return 'an array';
@@ -149,11 +156,17 @@ function describeSourceType(source: unknown): string {
     if ('base64' in obj && typeof obj.base64 !== 'string') {
       return `{ base64: ${describeValue(obj.base64)} }`;
     }
+    if (uriOnly) {
+      if (typeof obj.filePath === 'string') return 'an object with filePath';
+      if (typeof obj.base64 === 'string') return 'an object with base64';
+      return 'an object without uri';
+    }
     return 'an object without uri, filePath or base64';
   }
   return type;
 }
 
+/** Validates and normalizes one runtime source value without throwing. */
 export function validateSourceItem(
   source: unknown,
   resolveAsset: AssetResolver,
@@ -215,7 +228,7 @@ export function normalizeUriSource(
     typeof (source as { uri?: unknown }).uri !== 'string'
   ) {
     throw new Error(
-      `source must be an object with uri; got ${describeSourceType(source)}`,
+      `source must be an object with uri; got ${describeSourceType(source, true)}`,
     );
   }
   const normalized: Omit<NativePdfSource, 'base64'> = { uri: source.uri };
@@ -226,6 +239,7 @@ export function normalizeUriSource(
   return normalized;
 }
 
+/** Normalizes a source, returning `null` when the runtime value is malformed. */
 export function normalizeSource(
   source: PdfSource,
   resolveAsset: AssetResolver,
@@ -281,7 +295,7 @@ export function inspectSources(
       return {
         status: 'invalid',
         message: validation.error,
-        sourceIndex: isList ? index : undefined,
+        sourceIndex: isList ? index : 0,
       };
     }
     normalized.push({

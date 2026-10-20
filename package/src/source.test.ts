@@ -3,6 +3,7 @@ import {
   inspectSources,
   normalizeSource,
   normalizeSources,
+  normalizeUriSource,
   sourceKey,
   sourcesKey,
 } from './source';
@@ -35,6 +36,12 @@ describe('normalizeSource', () => {
     ).toEqual({
       uri: '/data/doc.pdf',
     });
+  });
+
+  test('describes a filePath when a URI-only source receives one', () => {
+    expect(() => normalizeUriSource({ filePath: '/a.pdf' } as never)).toThrow(
+      'source must be an object with uri; got an object with filePath',
+    );
   });
 
   test('resolves required assets', () => {
@@ -228,19 +235,19 @@ describe('invalid and empty sources', () => {
       status: 'invalid',
       message:
         'source must be a require() result or an object with uri, filePath or base64; got a string',
-      sourceIndex: undefined,
+      sourceIndex: 0,
     });
     expect(inspectSources({}, undefined, resolveAsset)).toEqual({
       status: 'invalid',
       message:
         'source must be a require() result or an object with uri, filePath or base64; got {}',
-      sourceIndex: undefined,
+      sourceIndex: 0,
     });
     expect(inspectSources({ uri: 42 as never }, undefined, resolveAsset)).toEqual({
       status: 'invalid',
       message:
         'source must be a require() result or an object with uri, filePath or base64; got { uri: 42 }',
-      sourceIndex: undefined,
+      sourceIndex: 0,
     });
   });
 

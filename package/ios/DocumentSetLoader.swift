@@ -47,6 +47,7 @@ final class DocumentSetLoader {
     downloads = Array(repeating: nil, count: sources.count)
   }
 
+  /// Starts resolving all sources and reports the first failure or assembled document.
   private func start() {
     // Cancelled by the view before the result: the sources that loaded are
     // released (those still loading release themselves).

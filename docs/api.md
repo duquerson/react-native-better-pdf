@@ -75,6 +75,11 @@ each page. The viewer adds no safe-area insets on either platform, like
 | `search(query)` / `searchNext()` / `searchPrevious()` / `clearSearch()` | Full-text search. `search` is ignored before `onLoad` |
 | `getStats()` | Render and cache statistics, for diagnostics |
 
+Before the native view is mounted, `goToPage`, `zoomTo`, `goToViewport`,
+`search`, `searchNext`, `searchPrevious` and `clearSearch` are no-ops;
+`getStats()` returns `null`; and asynchronous methods such as `getOutline`,
+`getPageSizes`, `renderPage` and `print` reject with `The PDF view is not mounted`.
+
 `goToPage`, `zoomTo` and `goToViewport` ignore `NaN` and `±Infinity`, e.g.
 `goToPage(Number(text) - 1)` while a page field holds a letter. A fractional
 page is rounded to the nearest page on both platforms: `goToPage(1.6)` opens

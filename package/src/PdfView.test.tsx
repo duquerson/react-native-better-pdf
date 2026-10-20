@@ -1004,7 +1004,7 @@ describe('PdfView', () => {
         code: 'invalid-source',
         message:
           'source must be a require() result or an object with uri, filePath or base64; got a string',
-        sourceIndex: undefined,
+        sourceIndex: 0,
       },
     ]);
 
@@ -1021,7 +1021,7 @@ describe('PdfView', () => {
         code: 'invalid-source',
         message:
           'source must be a require() result or an object with uri, filePath or base64; got {}',
-        sourceIndex: undefined,
+        sourceIndex: 0,
       },
     ]);
 
@@ -1038,7 +1038,7 @@ describe('PdfView', () => {
         code: 'invalid-source',
         message:
           'source must be a require() result or an object with uri, filePath or base64; got { uri: 42 }',
-        sourceIndex: undefined,
+        sourceIndex: 0,
       },
     ]);
 
