@@ -761,16 +761,24 @@ export function PdfView({
   const isInvalidSource = inspection.status === 'invalid';
   const invalidMessage = isInvalidSource ? inspection.message : undefined;
   const invalidSourceIndex = isInvalidSource ? inspection.sourceIndex : undefined;
+  const invalidSourceKey = isInvalidSource
+    ? JSON.stringify([invalidMessage, invalidSourceIndex])
+    : null;
+  const reportedInvalidSource = useRef<string | null>(null);
 
   useEffect(() => {
-    if (isInvalidSource && invalidMessage !== undefined) {
-      handlers.current.onError?.({
-        code: 'invalid-source',
-        message: invalidMessage,
-        sourceIndex: invalidSourceIndex,
-      });
+    if (invalidSourceKey === null) {
+      reportedInvalidSource.current = null;
+      return;
     }
-  }, [isInvalidSource, invalidMessage, invalidSourceIndex]);
+    if (reportedInvalidSource.current === invalidSourceKey) return;
+    reportedInvalidSource.current = invalidSourceKey;
+    handlers.current.onError?.({
+      code: 'invalid-source',
+      message: invalidMessage!,
+      sourceIndex: invalidSourceIndex,
+    });
+  }, [invalidMessage, invalidSourceIndex, invalidSourceKey]);
 
   useEffect(() => {
     if (inspection.status !== 'valid') {

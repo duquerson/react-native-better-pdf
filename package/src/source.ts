@@ -106,6 +106,28 @@ export type NormalizedSource = Omit<NativePdfSource, 'base64'> & {
   base64?: string;
 };
 
+function describeValue(value: unknown): string {
+  if (value === null) return 'null';
+  switch (typeof value) {
+    case 'undefined':
+      return 'undefined';
+    case 'string':
+      return 'a string';
+    case 'number':
+      return Number.isNaN(value) ? 'NaN' : String(value);
+    case 'bigint':
+      return `${value}n`;
+    case 'symbol':
+      return value.toString();
+    case 'function':
+      return 'a function';
+    case 'object':
+      return Array.isArray(value) ? 'an array' : 'an object';
+    default:
+      return typeof value;
+  }
+}
+
 function describeSourceType(source: unknown): string {
   if (source === null) return 'null';
   if (source === undefined) return 'undefined';
@@ -119,13 +141,13 @@ function describeSourceType(source: unknown): string {
     const keys = Object.keys(obj);
     if (keys.length === 0) return '{}';
     if ('uri' in obj && typeof obj.uri !== 'string') {
-      return `{ uri: ${JSON.stringify(obj.uri)} }`;
+      return `{ uri: ${describeValue(obj.uri)} }`;
     }
     if ('filePath' in obj && typeof obj.filePath !== 'string') {
-      return `{ filePath: ${JSON.stringify(obj.filePath)} }`;
+      return `{ filePath: ${describeValue(obj.filePath)} }`;
     }
     if ('base64' in obj && typeof obj.base64 !== 'string') {
-      return `{ base64: ${JSON.stringify(obj.base64)} }`;
+      return `{ base64: ${describeValue(obj.base64)} }`;
     }
     return 'an object without uri, filePath or base64';
   }

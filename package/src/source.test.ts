@@ -208,6 +208,7 @@ describe('invalid and empty sources', () => {
     expect(normalizeSource('https://example.com/a.pdf', resolveAsset)).toBeNull();
     expect(normalizeSource({}, resolveAsset)).toBeNull();
     expect(normalizeSource({ uri: 42 as never }, resolveAsset)).toBeNull();
+    expect(normalizeSource({ uri: 42n } as never, resolveAsset)).toBeNull();
   });
 
   test('normalizeSources does not throw and returns [] for null, undefined or malformed sources', () => {
