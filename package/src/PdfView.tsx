@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type Ref,
+  type RefObject,
 } from 'react';
 import {
   Image,
@@ -27,6 +28,7 @@ import {
   toNativeFormValues,
 } from './formFields';
 import { nativeColor } from './nativeColor';
+import { PdfMethodError, withMethodErrors } from './PdfMethodError';
 import { OverlayRegistryContext, type OverlayRegistry } from './PdfPageOverlay';
 import { buildOutlineTree } from './outline';
 import { defaultPrintJobName } from './printJobName';
@@ -46,7 +48,7 @@ import type { NativePdfFormChangeEvent } from './types/NativePdfFormChangeEvent'
 import type { NativePdfSource } from './types/NativePdfSource';
 import type { PdfColorScheme } from './types/PdfColorScheme';
 import type { PdfContentInset } from './types/PdfContentInset';
-import type { PdfError } from './types/PdfError';
+import type { PdfError, PdfLoadError, PdfPageError } from './types/PdfError';
 import type { PdfExportOptions } from './types/PdfExportOptions';
 import type { PdfExportResult } from './types/PdfExportResult';
 import type { PdfFitPolicy } from './types/PdfFitPolicy';
@@ -90,6 +92,10 @@ export interface NavigationOptions {
   animated?: boolean;
 }
 
+/**
+ * `PdfView`'s methods. The promise methods reject with a
+ * {@linkcode PdfMethodError}; match on its `code`.
+ */
 export interface PdfViewRef {
   /**
    * Scrolls so `page` (zero-based, rounded to the nearest page, clamped) is
@@ -410,7 +416,20 @@ export interface PdfViewProps extends ViewProps {
    * server (see `PdfUriSource.cache` and `maxAgeMs`).
    */
   onLoadProgress?: (event: PdfLoadProgressEvent) => void;
-  onError?: (error: PdfError) => void;
+  /**
+   * The document could not be loaded, or (Android only) one of its pages
+   * could not be rendered. `error.page !== undefined` tells them apart.
+   *
+   * - {@linkcode PdfLoadError}, without `page`: the load failed and nothing
+   *   is shown.
+   * - {@linkcode PdfPageError}, with `page`, Android only: it comes after
+   *   {@linkcode PdfViewProps.onLoad}, and the document stays open.
+   *   `page-render-failed`: the page stays blank until the document is
+   *   loaded again (e.g. a new `key`); each page is reported once.
+   *   `out-of-memory`: the viewer frees memory and tries the page again
+   *   later; reported once per document.
+   */
+  onError?: (error: PdfLoadError | PdfPageError) => void;
   onPageChange?: (event: PdfPageChangeEvent) => void;
   /**
    * The user tapped a link to a URL. Links to other pages of the document
@@ -632,7 +651,10 @@ export function PdfView({
       onLoadProgress: callback((event: PdfLoadProgressEvent) =>
         handlers.current.onLoadProgress?.(event),
       ),
-      onError: callback((error: PdfError) => handlers.current.onError?.(error)),
+      // Native sets `page` only for page failures.
+      onError: callback((error: PdfError) =>
+        handlers.current.onError?.(error as PdfLoadError | PdfPageError),
+      ),
       onPageChange: callback((event: PdfPageChangeEvent) =>
         handlers.current.onPageChange?.(event),
       ),
@@ -684,50 +706,48 @@ export function PdfView({
         if (!Number.isFinite(scale)) return;
         nativeRef.current?.zoomTo(scale, options?.animated ?? true);
       },
-      async getOutline() {
-        const native = nativeRef.current;
-        if (native == null) throw new Error('The PDF view is not mounted');
-        return buildOutlineTree(await native.getOutline());
+      getOutline() {
+        return withNativeView(nativeRef, async (native) =>
+          buildOutlineTree(await native.getOutline()),
+        );
       },
       goToViewport(viewport) {
         const { page, x, y, scale } = viewport;
         if (![page, x, y, scale].every(Number.isFinite) || scale <= 0) return;
         nativeRef.current?.goToViewport({ page, x, y, scale });
       },
-      async getPageSizes() {
-        const native = nativeRef.current;
-        if (native == null) throw new Error('The PDF view is not mounted');
-        return native.getPageSizes();
+      getPageSizes() {
+        return withNativeView(nativeRef, (native) => native.getPageSizes());
       },
-      async renderPage(page, options) {
-        const native = nativeRef.current;
-        if (native == null) throw new Error('The PDF view is not mounted');
-        return native.renderPage(page, options);
-      },
-      async print(options) {
-        const native = nativeRef.current;
-        if (native == null) throw new Error('The PDF view is not mounted');
-        const jobName = options?.jobName?.trim() ?? '';
-        const [first] = latestSources.current;
-        if (jobName !== '') return native.print(jobName);
-        return native.print(
-          first == null ? 'Document' : defaultPrintJobName(first),
+      renderPage(page, options) {
+        return withNativeView(nativeRef, (native) =>
+          native.renderPage(page, options),
         );
       },
-      async getFormFields() {
-        const native = nativeRef.current;
-        if (native == null) throw new Error('The PDF view is not mounted');
-        return (await native.getFormFields()).map(toFormField);
+      print(options) {
+        return withNativeView(nativeRef, (native) => {
+          const jobName = options?.jobName?.trim() ?? '';
+          const [first] = latestSources.current;
+          if (jobName !== '') return native.print(jobName);
+          return native.print(
+            first == null ? 'Document' : defaultPrintJobName(first),
+          );
+        });
       },
-      async setFormFieldValues(values) {
-        const native = nativeRef.current;
-        if (native == null) throw new Error('The PDF view is not mounted');
-        await native.setFormFieldValues(toNativeFormValues(values));
+      getFormFields() {
+        return withNativeView(nativeRef, async (native) =>
+          (await native.getFormFields()).map(toFormField),
+        );
       },
-      async exportDocument(options) {
-        const native = nativeRef.current;
-        if (native == null) throw new Error('The PDF view is not mounted');
-        return native.exportDocument(toNativeFilePath(options?.filePath));
+      setFormFieldValues(values) {
+        return withNativeView(nativeRef, (native) =>
+          native.setFormFieldValues(toNativeFormValues(values)),
+        );
+      },
+      exportDocument(options) {
+        return withNativeView(nativeRef, (native) =>
+          native.exportDocument(toNativeFilePath(options?.filePath)),
+        );
       },
       getStats() {
         return nativeRef.current?.getStats() ?? null;
@@ -888,6 +908,20 @@ function useContentInset(
 
 function clearance(value: number | undefined): number {
   return value != null && Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+/** `use` with the mounted native view; rejects with a `PdfMethodError`. */
+function withNativeView<T>(
+  ref: RefObject<NativeRef | null>,
+  use: (native: NativeRef) => T | Promise<T>,
+): Promise<T> {
+  return withMethodErrors(() => {
+    const native = ref.current;
+    if (native == null) {
+      throw new PdfMethodError('not-loaded', 'The PDF view is not mounted');
+    }
+    return use(native);
+  });
 }
 
 /** The placements of the `PdfPageOverlay`s rendered inside a `PdfView`. */

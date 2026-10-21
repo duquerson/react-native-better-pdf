@@ -32,7 +32,7 @@ PDFKit on iOS, the platform `PdfRenderer` on Android: no bundled PDFium, no WebV
 - **Forms** — AcroForm fields filled in by touch or from code, read back by name and exported as a filled-in PDF.
 - **Page overlays** — React views attached to points of a page, moved natively while it scrolls and zooms.
 - **Document APIs** — outline, page sizes, metadata, page images and printing, with or without a view.
-- **Password protection, typed errors, accessibility** — stable error codes identical on both platforms; VoiceOver and TalkBack read each page.
+- **Password protection, typed errors, accessibility** — stable error codes identical on both platforms, for load failures and method calls alike; VoiceOver and TalkBack read each page.
 
 ## Requirements
 
@@ -95,7 +95,7 @@ all props and ref methods; the [guides](#guides) cover each feature.
 
 | Guide | Covers |
 | --- | --- |
-| [Sources and loading](docs/guides/sources-and-loading.md) | Remote, local and bundled files, request headers, base64 data, several files as one document, loading state |
+| [Sources and loading](docs/guides/sources-and-loading.md) | Remote, local and bundled files, request headers and redirects, base64 data, several files as one document, loading state |
 | [Navigation and reading position](docs/guides/navigation.md) | Links and page taps; saving and restoring where the reader left off |
 | [Offline reading and caching](docs/guides/offline-and-caching.md) | Cache modes, revalidation, offline fallback, `PdfCache` |
 | [Layout and appearance](docs/guides/layout-and-appearance.md) | Facing pages, translucent bars, dark pages |

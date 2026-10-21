@@ -58,6 +58,20 @@ items that are not objects (such as `[null]`) — is malformed:
   throwing synchronously.
 - An empty list `[]` reports an `invalid-source` error with no `sourceIndex`.
 
+### Redirects
+
+Both platforms follow redirects the same way:
+
+- At most 10; more fail with `network-error`.
+- From http to https, never from https to http or to anything but
+  http(s): that fails with `http-error`, and `httpStatus` is the
+  redirect's status (301, 302, 303, 307 or 308).
+- `headers` go to the URL's origin (scheme, host and port) only,
+  `Authorization` included. After a redirect to another origin, the rest of
+  the download is sent without them, even if a later redirect comes back.
+  http to https on the same host is another origin too: when you send
+  credentials, use the https URL.
+
 ## Base64 documents
 
 A document you have as a base64 string — made with pdfmake or pdf-lib, or
@@ -164,7 +178,8 @@ smaller than its base64 form.
   shows none of them and `onError` reports `error.sourceIndex`. An empty
   list is an `invalid-source` error. `onLoadProgress` sums the downloads.
 - **Reading only:** forms cannot be filled in, and `print`,
-  `exportDocument`, `getFormFields` and `setFormFieldValues` reject.
+  `exportDocument`, `getFormFields` and `setFormFieldValues` reject with
+  `not-supported`.
   Printing and exporting need one file, and Android has no API that merges
   PDF files.
 - Links within a source lead to its pages, and "next page" / "previous
@@ -182,8 +197,9 @@ smaller than its base64 form.
 
 ## Loading state
 
-There is no built-in spinner. Show your own until `onLoad` or `onError`;
-for remote documents `onLoadProgress` reports the download:
+There is no built-in spinner. Show your own until `onLoad`, or `onError`
+without `error.page`; for remote documents `onLoadProgress` reports the
+download:
 
 ```tsx
 onLoadProgress={({ loadedBytes, totalBytes }) =>
@@ -192,5 +208,19 @@ onLoadProgress={({ loadedBytes, totalBytes }) =>
 ```
 
 `totalBytes` is `undefined` when the server does not report a size.
+
+An `onError` with `error.page` is not a load failure: on Android, a page
+that cannot be rendered is reported after `onLoad`, and the rest of the
+document stays open. Keep the viewer on screen:
+
+```tsx
+onError={(error) => {
+  if (error.page !== undefined) {
+    console.warn(`${error.code} on page ${error.page + 1}`);
+  } else {
+    setLoadError(error); // nothing is shown
+  }
+}}
+```
 
 See the [API reference](../api.md#errors) for the error codes.

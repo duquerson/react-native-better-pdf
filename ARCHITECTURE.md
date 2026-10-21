@@ -42,6 +42,7 @@ package/
     PdfView.tsx                    public component (wrapper over the host component)
     PdfCache.ts                    public cache API: AbortSignal, PdfDownloadError
     PdfDocument.ts                 public document API: open (AbortSignal, PdfOpenError), close
+    PdfMethodError.ts              methods' rejections: native `[code] message` → PdfMethodError
     source.ts                      PdfSource union (or a list) → native [{ uri, base64, headers, cache options, password }]
     nativeSource.ts                base64 text → native-owned ArrayBuffer (once per distinct text)
   test/base64/                     the C++ and Swift base64 decoders against shared cases, and each other
@@ -56,6 +57,7 @@ package/
     DocumentSetLoader.swift        the view's sources in parallel; several assembled into one PDFDocument
     DisplayedDocument.swift        the displayed document and its sources (files, passwords, first pages)
     PdfLoadFailure.swift           Swift error → PdfError
+    PdfMethodFailure.swift         a method's rejection as `[code] message`
     DocumentCache.swift            fresh copy or shared download/revalidation, stale fallback
     DocumentCacheStore.swift       copies on disk: session/persistent dirs, metadata, pins
     SharedDownload.swift           one URLSession request per copy, conditional with a copy
@@ -93,6 +95,7 @@ package/
     DocumentReads.kt               outline, metadata, page sizes, page images on duplicated FDs
                                    (view session and document)
     PageImageRequest.kt            renderPage validation and file write (view and document)
+    PdfMethodException.kt          a method's rejection as `[code] message`
     outline/                       bounded PDF parser: outline, page tree, /Info (PdfDate)
   android/src/main/cpp/
     cpp-adapter.cpp                JNI_OnLoad: Nitro's natives, then NativeBase64Document's and NativePageCoverage's
@@ -435,7 +438,8 @@ fetch(source) ──► stored copy fresh for source.maxAgeMs? ──yes──�
           SharedDownload for the key in flight? ──yes──► join it
                       │ no
                       ▼
-          GET (conditional with the copy's ETag / Last-Modified)
+          GET (conditional with the copy's ETag / Last-Modified),
+          following redirects by RedirectPolicy
              304 → mark validated · 200 + %PDF- → rename into place
              unreachable / 5xx → view: stored copy as stale · PdfCache: error
 ```
@@ -454,10 +458,21 @@ fetch(source) ──► stored copy fresh for source.maxAgeMs? ──yes──�
   old ones and removal unlinks, so a displayed document keeps reading its
   file. iOS views open a pin (hard link in `BetterPdf/open`) because they
   re-open the displayed file by path for outline, page sizes and images.
+- **Redirects:** `RedirectPolicy` (Kotlin and Swift, same rules): at most
+  10 (then `network-error`), never https → http (`http-error` with the
+  3xx), caller headers only until the first hop to another origin; the
+  conditional headers go on every hop. Neither platform's own handling
+  fits: AOSP's OkHttp refuses scheme changes and sends every header but
+  `Authorization` to other hosts, so Android follows redirects itself
+  (`instanceFollowRedirects = false`, one connection per hop, each one
+  reachable by `cancel()`); CFNetwork drops `Authorization` on every
+  redirect and keeps the other headers on every host, so iOS rebuilds each
+  redirected request in a task delegate.
 - **Waiting:** one subscriber per view load or `PdfCache.download()`.
   Cancelling removes the subscriber; the request stops when none remain.
-- **Tests:** `DocumentCacheTest` (JVM, local HTTP server) and the
-  `viewer-offline` e2e flow on both platforms.
+- **Tests:** `DocumentCacheTest` (JVM, local HTTP server),
+  `RedirectPolicyTest`, and the `viewer-offline` and `viewer-redirects` e2e
+  flows on both platforms.
 
 ## Known platform constraints
 
