@@ -35,7 +35,8 @@ same style without mounting the native viewer; no load runs, no events fire,
 and ref methods behave as they do before the native view is mounted:
 `goToPage`, `zoomTo`, `goToViewport`, `search`, `searchNext`,
 `searchPrevious` and `clearSearch` are no-ops, `getStats()` returns `null`,
-and the asynchronous methods reject with `The PDF view is not mounted`.
+and the promise methods reject with a `PdfMethodError` with code `not-loaded`
+(see [Method errors](../api.md#method-errors)).
 
 Setting a valid source afterwards mounts the native viewer and loads the
 document. Setting the source back to `null` unmounts the native viewer, closing

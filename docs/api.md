@@ -76,9 +76,10 @@ each page. The viewer adds no safe-area insets on either platform, like
 | `getStats()` | Render and cache statistics, for diagnostics |
 
 Before the native view is mounted, `goToPage`, `zoomTo`, `goToViewport`,
-`search`, `searchNext`, `searchPrevious` and `clearSearch` are no-ops;
-`getStats()` returns `null`; and asynchronous methods such as `getOutline`,
-`getPageSizes`, `renderPage` and `print` reject with `The PDF view is not mounted`.
+`search`, `searchNext`, `searchPrevious` and `clearSearch` are no-ops,
+`getStats()` returns `null`, and the promise methods reject with code
+`not-loaded`.
+
 The promise methods reject with a `PdfMethodError`; see
 [Method errors](#method-errors).
 
