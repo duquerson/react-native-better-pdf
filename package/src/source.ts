@@ -239,23 +239,6 @@ export function normalizeUriSource(
   return normalized;
 }
 
-/** Normalizes a source, returning `null` when the runtime value is malformed. */
-export function normalizeSource(
-  source: PdfSource,
-  resolveAsset: AssetResolver,
-): NormalizedSource;
-export function normalizeSource(
-  source: unknown,
-  resolveAsset: AssetResolver,
-): NormalizedSource | null;
-export function normalizeSource(
-  source: unknown,
-  resolveAsset: AssetResolver,
-): NormalizedSource | null {
-  const result = validateSourceItem(source, resolveAsset);
-  return result.ok ? result.source : null;
-}
-
 /** The source's own password, if it has one (bundled assets cannot). */
 export function sourcePassword(source: unknown): string | undefined {
   if (source != null && typeof source === 'object' && 'password' in source) {
@@ -295,7 +278,7 @@ export function inspectSources(
       return {
         status: 'invalid',
         message: validation.error,
-        sourceIndex: isList ? index : 0,
+        sourceIndex: index,
       };
     }
     normalized.push({
@@ -305,20 +288,6 @@ export function inspectSources(
   }
   return { status: 'valid', sources: normalized };
 }
-
-/**
- * The native sources of `PdfView`'s `source`, one or several, each with its
- * password: its own, else `password` (the prop), else `''` for none.
- */
-export function normalizeSources(
-  source: unknown,
-  password: string | undefined,
-  resolveAsset: AssetResolver,
-): NormalizedSource[] {
-  const inspection = inspectSources(source, password, resolveAsset);
-  return inspection.status === 'valid' ? inspection.sources : [];
-}
-
 
 /**
  * Value identity of a normalized source. Equal keys mean equal values, so

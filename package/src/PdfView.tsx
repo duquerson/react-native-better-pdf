@@ -760,7 +760,9 @@ export function PdfView({
 
   const isInvalidSource = inspection.status === 'invalid';
   const invalidMessage = isInvalidSource ? inspection.message : undefined;
-  const invalidSourceIndex = isInvalidSource ? inspection.sourceIndex : undefined;
+  const invalidSourceIndex = isInvalidSource
+    ? inspection.sourceIndex
+    : undefined;
   const invalidSourceKey = isInvalidSource
     ? JSON.stringify([invalidMessage, invalidSourceIndex])
     : null;
@@ -786,77 +788,73 @@ export function PdfView({
     }
   }, [inspection.status]);
 
-  if (inspection.status !== 'valid') {
-    return (
-      <View {...viewProps} style={[styles.box, style]} collapsable={false}>
-        {children}
-      </View>
-    );
-  }
-
   // The native view fills a plain View that takes the app's style: Android
   // ignores `borderRadius` on custom native views, and clipping a scrolling
   // native view to rounded corners is what `overflow: 'hidden'` does on both
   // platforms. `collapsable={false}`: the box must exist (clip, testID).
   return (
     <View {...viewProps} style={[styles.box, style]} collapsable={false}>
-      <NativeBetterPdfView
-        style={styles.fill}
-        sources={nativeSources}
-        // Every optional prop is sent as a concrete value: when a prop is
-        // removed, Fabric sends `null`, which Nitro's optional converters reject.
-        initialPosition={initialPosition}
-        minScale={minScale ?? 1}
-        maxScale={maxScale ?? 4}
-        pageSpacing={pageSpacing ?? 8}
-        horizontal={horizontal ?? false}
-        enablePaging={enablePaging ?? false}
-        enableRTL={enableRTL ?? false}
-        singlePage={singlePage ?? false}
-        fitPolicy={
-          fitPolicy ??
-          (horizontal === true || enablePaging === true || singlePage === true
-            ? 'page'
-            : 'width')
-        }
-        spreadMode={spreadMode ?? 'none'}
-        colorScheme={colorScheme === 'dark' ? 'dark' : 'light'}
-        contentInset={nativeContentInset}
-        enableDoubleTapZoom={enableDoubleTapZoom ?? true}
-        scrollEnabled={scrollEnabled ?? true}
-        pageAccessibilityLabel={
-          pageAccessibilityLabel ?? 'Page {page} of {pageCount}'
-        }
-        showsVerticalScrollIndicator={showsVerticalScrollIndicator ?? true}
-        showsHorizontalScrollIndicator={showsHorizontalScrollIndicator ?? true}
-        enableTextSelection={enableTextSelection ?? true}
-        enableFormFilling={enableFormFilling ?? true}
-        searchHighlightColor={nativeColor(
-          searchHighlightColor,
-          DEFAULT_SEARCH_HIGHLIGHT_COLOR,
-        )}
-        searchCurrentHighlightColor={nativeColor(
-          searchCurrentHighlightColor,
-          DEFAULT_SEARCH_CURRENT_HIGHLIGHT_COLOR,
-        )}
-        // `subscription` reads its set during render (see above).
-        /* eslint-disable react-hooks/refs */
-        onLoad={subscription('onLoad')}
-        onLoadProgress={subscription('onLoadProgress')}
-        onError={subscription('onError')}
-        onPageChange={subscription('onPageChange')}
-        onLinkPress={subscription('onLinkPress')}
-        onPageTap={subscription('onPageTap')}
-        onScaleChange={subscription('onScaleChange')}
-        onTextSelectionChange={subscription('onTextSelectionChange')}
-        onSearchChange={subscription('onSearchChange')}
-        onViewportChange={subscription('onViewportChange')}
-        onFormChange={subscription('onFormChange')}
-        /* eslint-enable react-hooks/refs */
-        overlayLayerId={overlayLayerId}
-        overlays={overlays}
-        hybridRef={hybridRef}
-      />
+      {inspection.status === 'valid' && (
+        <NativeBetterPdfView
+          style={styles.fill}
+          sources={nativeSources}
+          // Every optional prop is sent as a concrete value: when a prop is
+          // removed, Fabric sends `null`, which Nitro's optional converters reject.
+          initialPosition={initialPosition}
+          minScale={minScale ?? 1}
+          maxScale={maxScale ?? 4}
+          pageSpacing={pageSpacing ?? 8}
+          horizontal={horizontal ?? false}
+          enablePaging={enablePaging ?? false}
+          enableRTL={enableRTL ?? false}
+          singlePage={singlePage ?? false}
+          fitPolicy={
+            fitPolicy ??
+            (horizontal === true || enablePaging === true || singlePage === true
+              ? 'page'
+              : 'width')
+          }
+          spreadMode={spreadMode ?? 'none'}
+          colorScheme={colorScheme === 'dark' ? 'dark' : 'light'}
+          contentInset={nativeContentInset}
+          enableDoubleTapZoom={enableDoubleTapZoom ?? true}
+          scrollEnabled={scrollEnabled ?? true}
+          pageAccessibilityLabel={
+            pageAccessibilityLabel ?? 'Page {page} of {pageCount}'
+          }
+          showsVerticalScrollIndicator={showsVerticalScrollIndicator ?? true}
+          showsHorizontalScrollIndicator={
+            showsHorizontalScrollIndicator ?? true
+          }
+          enableTextSelection={enableTextSelection ?? true}
+          enableFormFilling={enableFormFilling ?? true}
+          searchHighlightColor={nativeColor(
+            searchHighlightColor,
+            DEFAULT_SEARCH_HIGHLIGHT_COLOR,
+          )}
+          searchCurrentHighlightColor={nativeColor(
+            searchCurrentHighlightColor,
+            DEFAULT_SEARCH_CURRENT_HIGHLIGHT_COLOR,
+          )}
+          // `subscription` reads its set during render (see above).
+          /* eslint-disable react-hooks/refs */
+          onLoad={subscription('onLoad')}
+          onLoadProgress={subscription('onLoadProgress')}
+          onError={subscription('onError')}
+          onPageChange={subscription('onPageChange')}
+          onLinkPress={subscription('onLinkPress')}
+          onPageTap={subscription('onPageTap')}
+          onScaleChange={subscription('onScaleChange')}
+          onTextSelectionChange={subscription('onTextSelectionChange')}
+          onSearchChange={subscription('onSearchChange')}
+          onViewportChange={subscription('onViewportChange')}
+          onFormChange={subscription('onFormChange')}
+          /* eslint-enable react-hooks/refs */
+          overlayLayerId={overlayLayerId}
+          overlays={overlays}
+          hybridRef={hybridRef}
+        />
+      )}
       {children != null && (
         // Above the document, passing touches through between overlays;
         // native code moves the PdfPageOverlays in it with their pages.

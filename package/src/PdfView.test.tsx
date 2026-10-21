@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test';
-import { createRef, type ReactNode } from 'react';
+import { createRef, useEffect, type ReactNode } from 'react';
 import { act, create, type ReactTestRenderer } from 'react-test-renderer';
 
 (
@@ -824,6 +824,81 @@ describe('PdfView', () => {
     expect(lastHost().overlays).toEqual([{ ...placed[0], page: 2, x: 30 }]);
   });
 
+  test('PdfPageOverlay does not throw when source is null', () => {
+    expect(() =>
+      render(
+        <PdfView source={null}>
+          <PdfPageOverlay page={0} x={0} y={0} width={10} height={10} />
+        </PdfView>,
+      ),
+    ).not.toThrow();
+    expect(hostRenders).toHaveLength(0);
+  });
+
+  test('PdfPageOverlay does not throw for an invalid source and reports invalid-source', () => {
+    const errors: unknown[] = [];
+    expect(() =>
+      render(
+        <PdfView source={{} as never} onError={(error) => errors.push(error)}>
+          <PdfPageOverlay page={0} x={0} y={0} width={10} height={10} />
+        </PdfView>,
+      ),
+    ).not.toThrow();
+    expect(hostRenders).toHaveLength(0);
+    expect(errors).toEqual([
+      {
+        code: 'invalid-source',
+        message:
+          'source must be a require() result or an object with uri, filePath or base64; got {}',
+        sourceIndex: 0,
+      },
+    ]);
+  });
+
+  test('an overlay mounted with a null source reaches native when a source arrives', () => {
+    const overlay = (
+      <PdfPageOverlay page={1} x={2} y={3} width={4} height={5} />
+    );
+    const renderer = render(<PdfView source={null}>{overlay}</PdfView>);
+    expect(hostRenders).toHaveLength(0);
+
+    act(() =>
+      renderer.update(
+        <PdfView source={{ uri: 'file:///a.pdf' }}>{overlay}</PdfView>,
+      ),
+    );
+    const placed = lastHost().overlays as Array<{ id: string }>;
+    expect(placed.map(({ id: _, ...placement }) => placement)).toEqual([
+      { page: 1, x: 2, y: 3, width: 4, height: 5, scalesWithZoom: true },
+    ]);
+  });
+
+  test('children do not remount when source changes from null to valid', () => {
+    let mountCount = 0;
+    function StatefulOverlay() {
+      useEffect(() => {
+        mountCount += 1;
+      }, []);
+      return <PdfPageOverlay page={0} x={0} y={0} width={10} height={10} />;
+    }
+
+    const renderer = render(
+      <PdfView source={null}>
+        <StatefulOverlay />
+      </PdfView>,
+    );
+    expect(mountCount).toBe(1);
+
+    act(() =>
+      renderer.update(
+        <PdfView source={{ uri: 'file:///a.pdf' }}>
+          <StatefulOverlay />
+        </PdfView>,
+      ),
+    );
+    expect(mountCount).toBe(1);
+  });
+
   test('sends no overlays and renders no layer without children', () => {
     render(<PdfView source={{ uri: 'x' }} />);
     expect(lastHost().overlays).toEqual([]);
@@ -982,7 +1057,9 @@ describe('PdfView', () => {
 
     act(() => renderer.update(<PdfView source={{ uri: 'file:///a.pdf' }} />));
     expect(hostRenders.length).toBe(1);
-    expect(lastHost().sources).toEqual([{ uri: 'file:///a.pdf', password: '' }]);
+    expect(lastHost().sources).toEqual([
+      { uri: 'file:///a.pdf', password: '' },
+    ]);
 
     act(() => renderer.update(<PdfView source={null} />));
     const countAfterNull = hostRenders.length;
@@ -1010,10 +1087,7 @@ describe('PdfView', () => {
 
     const objErrors: unknown[] = [];
     render(
-      <PdfView
-        source={{} as never}
-        onError={(err) => objErrors.push(err)}
-      />,
+      <PdfView source={{} as never} onError={(err) => objErrors.push(err)} />,
     );
     expect(hostRenders.length).toBe(0);
     expect(objErrors).toEqual([

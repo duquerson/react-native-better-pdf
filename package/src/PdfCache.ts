@@ -74,8 +74,7 @@ export const PdfCache = {
     } catch (error) {
       throw new PdfDownloadError({
         code: 'invalid-source',
-        message:
-          error instanceof Error ? error.message : 'Invalid URI source',
+        message: error instanceof Error ? error.message : 'Invalid URI source',
       });
     }
     const cache = getNativeCache();

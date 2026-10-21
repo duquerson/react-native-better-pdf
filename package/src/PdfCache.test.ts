@@ -216,9 +216,13 @@ describe('PdfCache', () => {
       {},
       { uri: 42 },
     ]) {
-      const error = await PdfCache.download(invalid as never).catch((e: unknown) => e);
+      const error = await PdfCache.download(invalid as never).catch(
+        (e: unknown) => e,
+      );
       expect(error).toBeInstanceOf(PdfDownloadError);
-      expect((error as InstanceType<typeof PdfDownloadError>).code).toBe('invalid-source');
+      expect((error as InstanceType<typeof PdfDownloadError>).code).toBe(
+        'invalid-source',
+      );
     }
   });
 

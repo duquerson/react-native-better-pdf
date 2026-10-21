@@ -156,9 +156,13 @@ describe('PdfDocument.open', () => {
       {},
       { uri: 42 },
     ]) {
-      const error = await PdfDocument.open(invalid as never).catch((e: unknown) => e);
+      const error = await PdfDocument.open(invalid as never).catch(
+        (e: unknown) => e,
+      );
       expect(error).toBeInstanceOf(PdfOpenError);
-      expect((error as InstanceType<typeof PdfOpenError>).code).toBe('invalid-source');
+      expect((error as InstanceType<typeof PdfOpenError>).code).toBe(
+        'invalid-source',
+      );
     }
   });
 
